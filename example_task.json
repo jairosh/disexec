@@ -1,0 +1,7 @@
+{
+	"id": "MANET_ASD_50",
+	"external_data": "asdasdasdasd: asdasdasdasd",
+	"external_data_folder": "/home/user/Simulations/config",
+	"command": "/home/user/test.sh",
+	"arguments": "-b 50 {edf}"
+}
