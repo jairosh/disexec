@@ -2,10 +2,11 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-05 18:00:24
+# @Last Modified time: 2018-03-05 18:40:00
 import json
 import os
 import tempfile
+import subprocess
 
 
 class Task(object):
@@ -36,13 +37,12 @@ class Task(object):
             if not os.path.exists(self._data['external_data_folder']):
                 os.makedirs(self._data['external_data_folder'])
             self._folderpath = self._data['external_data_folder']
+        # TODO: Manage the exception if it can't create the directory
         else:
             self._tempfolder = tempfile.TemporaryDirectory()
             self._folderpath = self._tempfolder.name
 
-        print('Folder: {}'.format(self._folderpath))
-        external_data = os.path.join(self._folderpath, str(self._data['id']))
-        print('Saving files to: {}'.format(external_data))
+        external_data = os.path.join(self._folderpath, str(self._data['id']) + '.txt')
         with open(external_data, 'w') as fp:
             fp.writelines(self._data['external_data'])
 
@@ -60,6 +60,8 @@ class Task(object):
         """The main phase of this task, this is where the hevy lifting is done.
         """
         self.prepare()
+        cmd = [self._data['command'], ] + self._arguments.split(sep=' ')
+        subprocess.run(cmd, cwd=os.path.dirname(self._data['command']))
         print('Running:{0} {1}'.format(self._data['command'], self._arguments))
         self.clean()
 

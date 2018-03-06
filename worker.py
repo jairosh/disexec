@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-05 17:31:00
+# @Last Modified time: 2018-03-05 18:35:10
 
 import pika
 import task
@@ -35,9 +35,6 @@ def worker_thread(url, queue_name):
 
         work = task.Task(task_data[2])
         work.run()
-        print(work)
-        # completed = subprocess.run([ONE_EXECUTABLE, '-b', '50', tmp_file],
-        #                           cwd=os.path.dirname(ONE_EXECUTABLE))
         channel.basic_ack(delivery_tag=task_data[0].delivery_tag)
 
 
