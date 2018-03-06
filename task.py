@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-01 17:44:29
+# @Last Modified time: 2018-03-05 18:00:24
 import json
 import os
 import tempfile
@@ -35,12 +35,14 @@ class Task(object):
         if self._data['external_data_folder']:
             if not os.path.exists(self._data['external_data_folder']):
                 os.makedirs(self._data['external_data_folder'])
-                self._folder = self._data['external_data_folder']
+            self._folderpath = self._data['external_data_folder']
         else:
             self._tempfolder = tempfile.TemporaryDirectory()
-            self._folder = self._tempfolder.name
+            self._folderpath = self._tempfolder.name
 
-        external_data = os.path.join(self._folder, self._data['id'])
+        print('Folder: {}'.format(self._folderpath))
+        external_data = os.path.join(self._folderpath, str(self._data['id']))
+        print('Saving files to: {}'.format(external_data))
         with open(external_data, 'w') as fp:
             fp.writelines(self._data['external_data'])
 
@@ -54,9 +56,13 @@ class Task(object):
             self._tempfolder.cleanup()
         pass
 
-    def main(self):
+    def run(self):
         """The main phase of this task, this is where the hevy lifting is done.
         """
         self.prepare()
         print('Running:{0} {1}'.format(self._data['command'], self._arguments))
         self.clean()
+
+    def __str__(self):
+        rep = 'Data={0}\n'.format(self._data)
+        return rep

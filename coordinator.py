@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 13:52:34
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-01 18:31:00
+# @Last Modified time: 2018-03-05 17:53:22
 
 import pika
 import argparse
@@ -21,7 +21,7 @@ class TaskCreator(object):
     """Defines an abstract class to create the tasks to be posted at the queue
     """
 
-    def __init__(self):
+    def __init__(self, csv_file, config):
         pass
 
     def create_tasks(self):
@@ -31,8 +31,9 @@ class TaskCreator(object):
 
 
 class ParamsInExternalFileCreator(TaskCreator):
-    def __init__(self, filepath):
+    def __init__(self, filepath, config):
         self._csv = filepath
+        self._config = config
 
     def create_tasks(self):
         json_tasks = []
@@ -48,16 +49,16 @@ class ParamsInExternalFileCreator(TaskCreator):
             for idx in range(len(datatask)):
                 sim_config = sim_config + '{0}={1}\n'.format(names[idx],
                                                              datatask[idx])
-                print('Task Added: {0}'.format([index, sim_config]))
             task['external_data'] = sim_config
             # Folder where all the external_data files will be written, if not
             # present, then it will use a temp folder
-            task['external_data_folder'] = ''
+            task['external_data_folder'] = self._config.get('task',
+                                                            'external_folder')
             # The command to execute in each worker, be aware of the $PATH
             # in all of the workers
-            task['command'] = ''
+            task['command'] = self._config.get('task', 'command')
             # Extra arguments or flags in the command
-            task['arguments'] = ''
+            task['arguments'] = self._config.get('task', 'arguments')
 
             json_tasks.append(json.dumps(task))
             index = index + 1
@@ -77,7 +78,7 @@ def read_csv_parameters(csvfile):
         for row in param_reader:
             fields.append(row)
 
-    col_names = fields[:1]
+    col_names = fields[:1][0]
     values = fields[1:]
     return col_names, values
 
@@ -87,10 +88,26 @@ def exit_with_error(msg, code):
     exit(code)
 
 
-def start(task_creator, url, csv_file):
+def start(config):
+    task_creator = config.get('coordinator', 'taskcreator')
+    csv_file = config.get('coordinator', 'csvfile')
+    url = config.get('coordinator', 'queue_url')
+    queue_name = config.get('general', 'queue_name')
+
     creator_class = getattr(sys.modules[__name__], task_creator)
-    creator = creator_class(csv_file)
+    creator = creator_class(csv_file, config)
     tasks = creator.create_tasks()
+    conn_params = pika.URLParameters(url)
+    print(conn_params)
+    connection = pika.BlockingConnection(conn_params)
+    channel = connection.channel()
+    channel.queue_declare(queue=queue_name)
+    for task in tasks:
+        print('Pushing into queue:\n{0}'.format(task))
+        channel.basic_publish(exchange='',
+                              routing_key=queue_name,
+                              body=task)
+    connection.close()
     print(tasks)
 
 
@@ -112,9 +129,7 @@ def main():
     except Exception as e:
         exit_with_error(e, 1)
 
-    start(cfg.get('coordinator', 'taskcreator'),
-          cfg.get('general', 'queue_url'),
-          cfg.get('coordinator', 'csvfile'))
+    start(cfg)
 
 
 if __name__ == '__main__':
