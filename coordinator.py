@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 13:52:34
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-05 17:53:22
+# @Last Modified time: 2018-03-08 19:08:28
 
 import pika
 import argparse
@@ -101,14 +101,14 @@ def start(config):
     print(conn_params)
     connection = pika.BlockingConnection(conn_params)
     channel = connection.channel()
-    channel.queue_declare(queue=queue_name)
+    channel.queue_declare(queue=queue_name, durable=True)
     for task in tasks:
         print('Pushing into queue:\n{0}'.format(task))
         channel.basic_publish(exchange='',
                               routing_key=queue_name,
-                              body=task)
+                              body=task,
+                              properties=pika.BasicProperties(delivery_mode=2))
     connection.close()
-    print(tasks)
 
 
 def main():

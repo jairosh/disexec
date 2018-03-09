@@ -2,11 +2,13 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-05 18:40:00
+# @Last Modified time: 2018-03-08 19:01:04
 import json
 import os
 import tempfile
 import subprocess
+import parser
+import re
 
 
 class Task(object):
@@ -19,6 +21,7 @@ class Task(object):
         self._folderpath = None
         self._tempfolder = None
         self._arguments = ''
+        self._stdout = None
         pass
 
     @staticmethod
@@ -61,10 +64,39 @@ class Task(object):
         """
         self.prepare()
         cmd = [self._data['command'], ] + self._arguments.split(sep=' ')
-        subprocess.run(cmd, cwd=os.path.dirname(self._data['command']))
-        print('Running:{0} {1}'.format(self._data['command'], self._arguments))
+        process = subprocess.Popen(cmd,
+                                   cwd=os.path.dirname(self._data['command']),
+                                   stdout=subprocess.PIPE)
+        self._stdout, err = process.communicate()
+        # subprocess.run(cmd, cwd=os.path.dirname(self._data['command']))
         self.clean()
 
+    def result(self):
+        """This function opens the result file and reads its contents. Modify
+        according to your needs"""
+        output = self._stdout.decode('utf-8')
+        pattern = re.compile('^Running simulation \'(.*)\'$')
+        files = []
+        results = []
+        for line in output.split('\n'):
+            if pattern.match(line):
+                filename = pattern.match(line).groups()[0]
+                filename += '_MessageStatsReport.txt'
+                files.append(filename)
+        pattern = re.compile('^[ ]*Report.reportDir[ ]*=[ ]*(.*)$')
+        dirname = ''
+        for config in self._data['external_data'].split('\n'):
+            if pattern.match(config):
+                dirname = pattern.match(config).groups()[0]
+                break
+        for file in files:
+            path = os.path.join(dirname, file)
+            json = parser.MessageStatsReportParser(path).get_json()
+            results.append(json)
+        return results
+
+    def get_id(self):
+        return self._data['id']
+
     def __str__(self):
-        rep = 'Data={0}\n'.format(self._data)
-        return rep
+        return 'Data={0}\n'.format(self._data)
