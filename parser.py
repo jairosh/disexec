@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-08 14:09:18
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-08 19:09:57
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-03-20 12:05:13
 import re
 import os
 import json
@@ -37,8 +37,8 @@ class MessageStatsReportParser(Parser):
                 first_line = True
                 for line in report:
                     if first_line:
-                        self._json['id'] = re.compile('.*scenario (.*)')\
-                                             .match(line).groups()[0]
+                        self._json['name'] = re.compile('.*scenario (.*)')\
+                                               .match(line).groups()[0]
                         first_line = False
                         continue
                     fields = line.strip().split(':')

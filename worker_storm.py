@@ -3,9 +3,9 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-10 00:25:01
+# @Last Modified time: 2018-03-10 01:13:17
 
-import pika
+import amqpstorm
 import task
 import argparse
 import configparser
@@ -25,42 +25,41 @@ LOG = logging.getLogger()
 def worker_thread(url, queue_name, results_queue):
     """Worker thread, for each instance o
     """
-    conn_params = pika.URLParameters(url)
-    connection = pika.BlockingConnection(conn_params)
+    connection = amqpstorm.UriConnection(url)
     channel = connection.channel()
-    channel.queue_declare(queue=queue_name, durable=True)
-    channel.basic_qos(prefetch_count=1)
+    channel.queue.declare(queue_name, durable=True)
+    channel.basic.qos(1)  # Fetch one message at a time
     thread_name = threading.current_thread().name
     LOG.info('[%s] Waiting for tasks', thread_name)
     while True:
-        task_data = channel.basic_get(queue=queue_name, no_ack=False)
+        message = channel.basic.get(queue=queue_name, no_ack=False)
         # If the queue is empty, task_data will contain only None
-        if all([x is None for x in task_data]):
+        if message is None:
             LOG.info('[%s] Nothing else to do.', thread_name)
             connection.close()
             break
 
-        work = task.Task(task_data[2])
+        work = task.Task(message.body)
         LOG.info('[%s] Got a task %s', thread_name, work.get_id())
         rc = work.run()
         if rc != 0:
             LOG.warning('[%s] Unexpected exit code: %d', thread_name, rc)
-            channel.basic_nack(delivery_tag=task_data[0].delivery_tag)
+            message.nack()
             continue
 
         LOG.debug('[%s] Task execution finished', thread_name)
-        channel.basic_ack(delivery_tag=task_data[0].delivery_tag)
+        message.ack()
         LOG.debug('[%s] ACK sent')
 
-        res_conn = pika.BlockingConnection(conn_params)
-        res_channel = res_conn.channel()
-        res_channel.queue_declare(results_queue, durable=True)
-        prop = pika.BasicProperties(delivery_mode=2)
-        for result in work.result():
-            res_channel.basic_publish(exchange='',
-                                      routing_key=results_queue,
-                                      body=result,
-                                      properties=prop)
+        with amqpstorm.UriConnection(url) as res_conn:
+            with res_conn.channel() as res_channel:
+                res_channel.queue.declare(results_queue, durable=True)
+                for result in work.result():
+                    props = {
+                        'delivery_mode': 2
+                    }
+                    res = amqpstorm.Message.create(res_channel, result, props)
+                    res.publish(results_queue, exchange='')
         LOG.debug('[%s] Task and result processing completed')
         res_conn.close()
 

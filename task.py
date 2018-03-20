@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-08 19:01:04
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-03-20 12:06:33
 import json
 import os
 import tempfile
@@ -45,7 +45,8 @@ class Task(object):
             self._tempfolder = tempfile.TemporaryDirectory()
             self._folderpath = self._tempfolder.name
 
-        external_data = os.path.join(self._folderpath, str(self._data['id']) + '.txt')
+        external_data = os.path.join(self._folderpath,
+                                     str(self._data['id']) + '.txt')
         with open(external_data, 'w') as fp:
             fp.writelines(self._data['external_data'])
 
@@ -68,12 +69,13 @@ class Task(object):
                                    cwd=os.path.dirname(self._data['command']),
                                    stdout=subprocess.PIPE)
         self._stdout, err = process.communicate()
-        # subprocess.run(cmd, cwd=os.path.dirname(self._data['command']))
+        result = process.returncode
         self.clean()
+        return result
 
     def result(self):
-        """This function opens the result file and reads its contents. Modify
-        according to your needs"""
+        """This function opens the result file and reads its contents formatted
+        as JSON. Modify according to your needs"""
         output = self._stdout.decode('utf-8')
         pattern = re.compile('^Running simulation \'(.*)\'$')
         files = []
@@ -92,6 +94,7 @@ class Task(object):
         for file in files:
             path = os.path.join(dirname, file)
             json = parser.MessageStatsReportParser(path).get_json()
+            json['id'] = self._data['id']
             results.append(json)
         return results
 
