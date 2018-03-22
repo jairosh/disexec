@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
-# @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-20 12:06:33
+# @Last Modified by:   Jairo Sanchez
+# @Last Modified time: 2018-03-22 14:24:46
 import json
 import os
 import tempfile
 import subprocess
 import parser
 import re
+import platform
 
 
 class Task(object):
@@ -95,6 +96,7 @@ class Task(object):
             path = os.path.join(dirname, file)
             json = parser.MessageStatsReportParser(path).get_json()
             json['id'] = self._data['id']
+            json['worker'] = platform.node()
             results.append(json)
         return results
 
