@@ -8,7 +8,7 @@ other computationally intensive processess.
 This project splits the functionality into one (or several) producer and multiple
 consumers.
 
-## `collector.py`
+## `coordinator.py`
 Is the producer logic, based on the configuration file, it will push tasks in JSON
 format into a RabbitMQ queue; each task can return data, such results will be pushed 
 into a separate queue for further processing.
@@ -17,6 +17,10 @@ into a separate queue for further processing.
 The consumer logic, this process spawns threads which will connect to the specified 
 queue, generate a Task object from the data and push the result of the execution.
 
+## `verify_results.py`
+Verify that every experiment specified in the CSV file has a corresponding result
+in the results queue. Creates a csv file with those experiments that were not 
+executed (no results in queue) or are incomplete
 
 # How to run
 * Install RabbitMQ
