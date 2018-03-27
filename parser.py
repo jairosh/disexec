@@ -3,10 +3,11 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-08 14:09:18
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-20 12:05:13
+# @Last Modified time: 2018-03-26 09:00:56
 import re
 import os
 import json
+import platform
 
 
 class Parser(object):
@@ -24,9 +25,10 @@ class MessageStatsReportParser(Parser):
     """Reads the content of a MessageStatsReport file from ONE and returns it
     in JSON formatted """
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, id):
         self._file = filepath
         self._json = None
+        self._id = id
 
     def get_json(self):
         if self._json:
@@ -37,8 +39,10 @@ class MessageStatsReportParser(Parser):
                 first_line = True
                 for line in report:
                     if first_line:
-                        self._json['name'] = re.compile('.*scenario (.*)')\
-                                               .match(line).groups()[0]
+                        self._json['id'] = re.compile('.*scenario (.*)')\
+                                             .match(line).groups()[0]
+                        self._json['scenario'] = re.compile('.*scenario (.*)')\
+                                                   .match(line).groups()[0]
                         first_line = False
                         continue
                     fields = line.strip().split(':')
@@ -46,6 +50,8 @@ class MessageStatsReportParser(Parser):
         else:
             raise FileNotFoundError('The provided path doesn\'t exists:{0}'
                                     .format(self._file))
+        self._json['number'] = self._id
+        self._json['worker'] = platform.node()
         return json.dumps(self._json)
 
     def _parse_value(self, value_string):
