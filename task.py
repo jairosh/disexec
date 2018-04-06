@@ -1,15 +1,14 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-22 14:24:46
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-03-26 09:00:21
 import json
 import os
 import tempfile
 import subprocess
 import parser
 import re
-import platform
 
 
 class Task(object):
@@ -94,9 +93,8 @@ class Task(object):
                 break
         for file in files:
             path = os.path.join(dirname, file)
-            json = parser.MessageStatsReportParser(path).get_json()
-            json['id'] = self._data['id']
-            json['worker'] = platform.node()
+            json = parser.MessageStatsReportParser(path,
+                                                   self._data['id']).get_json()
             results.append(json)
         return results
 

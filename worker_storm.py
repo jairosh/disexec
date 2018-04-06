@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-10 01:13:17
+# @Last Modified time: 2018-03-30 11:06:30
 
 import amqpstorm
 import task
@@ -18,15 +18,16 @@ DEFAULT_CONFIG_FILE = './disexec.config'
 DEFAULT_NBR_OF_THREADS = 4
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
 LOG = logging.getLogger()
+logging.getLogger('amqpstorm').setLevel(logging.INFO)
 
 
 def worker_thread(url, queue_name, results_queue):
-    """Worker thread, for each instance o
+    """Worker thread, for each instance
     """
     connection = amqpstorm.UriConnection(url)
-    channel = connection.channel()
+    channel = connection.channel(rpc_timeout=120)
     channel.queue.declare(queue_name, durable=True)
     channel.basic.qos(1)  # Fetch one message at a time
     thread_name = threading.current_thread().name
