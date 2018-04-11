@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
-# @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-26 09:00:21
+# @Last Modified by:   Jairo Sanchez
+# @Last Modified time: 2018-04-11 15:17:20
 import json
 import os
 import tempfile
 import subprocess
 import parser
 import re
+import datetime
+import platform
+import logging
+
+
+logging.basicConfig(level=logging.DEBUG)
+LOG = logging.getLogger()
 
 
 class Task(object):
@@ -22,6 +29,9 @@ class Task(object):
         self._tempfolder = None
         self._arguments = ''
         self._stdout = None
+        self._assigned = datetime.datetime.utcnow()
+        self._started = None
+        self._finished = None
         pass
 
     @staticmethod
@@ -64,6 +74,7 @@ class Task(object):
         """The main phase of this task, this is where the hevy lifting is done.
         """
         self.prepare()
+        self._started = datetime.datetime.utcnow()
         cmd = [self._data['command'], ] + self._arguments.split(sep=' ')
         process = subprocess.Popen(cmd,
                                    cwd=os.path.dirname(self._data['command']),
@@ -76,10 +87,12 @@ class Task(object):
     def result(self):
         """This function opens the result file and reads its contents formatted
         as JSON. Modify according to your needs"""
+        self._finished = datetime.datetime.utcnow()
         output = self._stdout.decode('utf-8')
         pattern = re.compile('^Running simulation \'(.*)\'$')
         files = []
         results = []
+        metrics = {}
         for line in output.split('\n'):
             if pattern.match(line):
                 filename = pattern.match(line).groups()[0]
@@ -91,11 +104,17 @@ class Task(object):
             if pattern.match(config):
                 dirname = pattern.match(config).groups()[0]
                 break
+        task_data = {'task_id': self._data['id'],
+                     'assigned': self._assigned.isoformat(),
+                     'started': self._started.isoformat(),
+                     'finished': self._finished.isoformat(),
+                     'worker': platform.node()}
         for file in files:
             path = os.path.join(dirname, file)
-            json = parser.MessageStatsReportParser(path,
-                                                   self._data['id']).get_json()
-            results.append(json)
+            metrics = parser.MessageStatsReportParser(path).get_results()
+            metrics.update(task_data)
+            results.append(json.dumps(metrics))
+
         return results
 
     def get_id(self):
