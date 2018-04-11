@@ -3,9 +3,9 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 13:52:34
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 18:28:18
+# @Last Modified time: 2018-04-11 18:52:51
 
-import pika
+import amqpstorm
 import argparse
 import configparser
 import os
@@ -137,17 +137,13 @@ def start(config):
     creator_class = getattr(sys.modules[__name__], task_creator)
     creator = creator_class(csv_file, config)
     tasks = creator.create_tasks()
-    conn_params = pika.URLParameters(url)
-    print(conn_params)
-    connection = pika.BlockingConnection(conn_params)
-    channel = connection.channel()
-    channel.queue_declare(queue=queue_name, durable=True)
+    connection = amqpstorm.UriConnection(url)
+    channel = connection.channel(rpc_timeout=120)
+    channel.queue.declare(queue_name, durable=True)
     for task in tasks:
         print('Pushing into queue:\n{0}'.format(task))
-        channel.basic_publish(exchange='',
-                              routing_key=queue_name,
-                              body=task,
-                              properties=pika.BasicProperties(delivery_mode=2))
+        channel.basic.publish(task, queue_name, exchange='',
+                              properties={'delivery_mode': 2})
     connection.close()
 
 
