@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 13:52:34
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-08 19:08:28
+# @Last Modified time: 2018-04-11 18:28:18
 
 import pika
 import argparse
@@ -31,13 +31,35 @@ class TaskCreator(object):
 
 
 class ParamsInExternalFileCreator(TaskCreator):
+
+    """Defines a task creator that will populate the ${external_data} var
+        with the data extracted from a CSV file. The CSV format is: first row
+        has the headers/variable names, each has the variables for a Task and
+        it'll be created a pair of the form
+                    $header=$cell_value
+        and then concatenated with new lines
+                    header_1=value1\n$header_2=...
+    """
+
     def __init__(self, filepath, config):
+        """Constructor
+
+        Args:
+            filepath (str): The path to the CSV file
+            config (RawConfigParser): The existant configuration parser, used
+            to embed the additional parameters to each Task
+        """
         self._csv = filepath
         self._config = config
 
     def create_tasks(self):
+        """Creates the tasks
+
+        Returns:
+            list: List of JSON formatted strings
+        """
         json_tasks = []
-        names, values = read_csv_parameters(self._csv)
+        names, values = self.read_csv_parameters(self._csv)
         index = 0
         for datatask in values:
             task = {}
@@ -65,30 +87,48 @@ class ParamsInExternalFileCreator(TaskCreator):
 
         return json_tasks
 
-
-def read_csv_parameters(csvfile):
-    """ Parses a csv file into two lists, one with the parameter names and
+    def read_csv_parameters(csvfile):
+        """Parses a csv file into two lists, one with the parameter names and
         another with all the values that takes per run
+
+        Args:
+            csvfile (str): The path to the CSV file to be parsed
+
+        Returns:
+            tuple: List with the names of columns in the first field, followed
+            by a list of lists for each row
+        """
+        col_names = []
+        fields = []
+        values = []
+        with open(csvfile, 'r') as the_file:
+            param_reader = csv.reader(the_file)
+            for row in param_reader:
+                fields.append(row)
+
+        col_names = fields[:1][0]
+        values = fields[1:]
+        return col_names, values
+
+
+def exit_with_error(why, code):
+    """Terminates execution of this program
+
+    Args:
+        msg (str): Message to display before crashing
+        code (int): The status code to return on the shell
     """
-    col_names = []
-    fields = []
-    values = []
-    with open(csvfile, 'r') as the_file:
-        param_reader = csv.reader(the_file)
-        for row in param_reader:
-            fields.append(row)
-
-    col_names = fields[:1][0]
-    values = fields[1:]
-    return col_names, values
-
-
-def exit_with_error(msg, code):
-    print(msg)
+    print(why)
     exit(code)
 
 
 def start(config):
+    """Creates the TaskCreator object specified in the configuration file
+    calls it and push the tasks to the Message queue
+
+    Args:
+        config (RawConfigParser): The configuration reader
+    """
     task_creator = config.get('coordinator', 'taskcreator')
     csv_file = config.get('coordinator', 'csvfile')
     url = config.get('coordinator', 'queue_url')
@@ -112,6 +152,11 @@ def start(config):
 
 
 def main():
+    """Main function
+
+    Raises:
+        FileNotFoundError: In case there is no configuration file
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', help='Load the configuration file',
                         type=str)

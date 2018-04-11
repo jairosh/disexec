@@ -3,13 +3,14 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-08 14:09:18
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 15:07:34
+# @Last Modified time: 2018-04-11 18:05:12
 import re
 import os
 
 
 class Parser(object):
-    """Abstract class for a generic file parser into a JSON representation"""
+    """Abstract class for a generic file parser into a JSON representation
+    """
 
     def __init__(self, filename):
         self._file = filename
@@ -21,13 +22,27 @@ class Parser(object):
 
 class MessageStatsReportParser(Parser):
     """Reads the content of a MessageStatsReport file from ONE and returns it
-    in JSON formatted """
+    in JSON formatted
+    """
 
     def __init__(self, filepath):
+        """Constructor
+
+        Args:
+            filepath (str): The path to the report file to be parsed
+        """
         self._file = filepath
         self._dict = None
 
     def get_results(self):
+        """Parses the content of the report file and generates a dict structure
+
+        Returns:
+            dict: The dictionary with all the stats parsed from the file
+
+        Raises:
+            FileNotFoundError: In case the provided report path didn't exists
+        """
         if self._dict:
             return self._dict
         self._dict = {}
@@ -50,7 +65,14 @@ class MessageStatsReportParser(Parser):
         return self._dict
 
     def _parse_value(self, value_string):
-        """Tries to parse the value represented in value_string"""
+        """Tries to parse :value_string: guessing the data type
+
+        Args:
+            value_string (str): The string representation to parse
+
+        Returns:
+            object: The value in the corresponding type (str, float, int)
+        """
         integer = re.compile('^[+-]?\d+$')
         floatno = re.compile('^[+-]?[\d]+[.][\d]+$')
         value = None

@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 15:17:20
+# @Last Modified time: 2018-04-11 17:49:54
 import json
 import os
 import tempfile
@@ -19,11 +19,16 @@ LOG = logging.getLogger()
 
 
 class Task(object):
-    """Represents a Task to be created by a coordinator, and to be given to
-    the workers to be executed"""
+    """Represents a Task to be created by a coordinator, and includes the data
+    necessary for the execution in a worker
+    """
 
     def __init__(self, jsondesc):
-        """Creates a Task object from a JSON string (also see from_file)"""
+        """Creates a Task object from a JSON string (also see from_file)
+
+        Args:
+            jsondesc (str): A JSON string that contains the serialized data
+        """
         self._data = json.loads(jsondesc)
         self._folderpath = None
         self._tempfolder = None
@@ -36,7 +41,14 @@ class Task(object):
 
     @staticmethod
     def from_file(filename):
-        """Create a Task object from a JSON file"""
+        """Create a Task object from a JSON file
+
+        Args:
+            filename (str): The path for the JSON formatted file
+
+        Returns:
+            Task: An instance of this class
+        """
         content = None
         with open(filename, 'r') as jsonFile:
             content = json.load(jsonFile)
@@ -45,7 +57,8 @@ class Task(object):
     def prepare(self):
         """The first phase of the lifecycle. This is executed previous to the
         main phase. It's used for the execution of relevant subtasks e.g.:
-        creation of config files, download of dataset, version checks etc."""
+        creation of config files, download of dataset, version checks etc.
+        """
         if self._data['external_data_folder']:
             if not os.path.exists(self._data['external_data_folder']):
                 os.makedirs(self._data['external_data_folder'])
@@ -65,13 +78,17 @@ class Task(object):
 
     def clean(self):
         """Last phase of the lifecycle. Called after the completion of the
-        main task"""
+        main task
+        """
         if self._tempfolder:
             self._tempfolder.cleanup()
         pass
 
     def run(self):
         """The main phase of this task, this is where the hevy lifting is done.
+
+        Returns:
+            int: The exit status code of the given subprocess
         """
         self.prepare()
         self._started = datetime.datetime.utcnow()
@@ -86,7 +103,13 @@ class Task(object):
 
     def result(self):
         """This function opens the result file and reads its contents formatted
-        as JSON. Modify according to your needs"""
+        as JSON. Modify according to your needs
+
+        Returns:
+            list: List of JSON formatted strings. As the command could have had
+            multiple executions and/or multiple output files, the list groups
+            all the results.
+        """
         self._finished = datetime.datetime.utcnow()
         output = self._stdout.decode('utf-8')
         pattern = re.compile('^Running simulation \'(.*)\'$')
@@ -118,7 +141,19 @@ class Task(object):
         return results
 
     def get_id(self):
+        """Getter for the Task's id
+
+        Returns:
+            object: The ID as it's stored in the JSON entity that was used to
+            initialize this Task
+        """
         return self._data['id']
 
     def __str__(self):
+        """The conversion function to get a textual representation of this
+        object
+
+        Returns:
+            str: The textual representation
+        """
         return 'Data={0}\n'.format(self._data)
