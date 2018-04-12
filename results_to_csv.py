@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-21 15:08:13
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-22 15:41:43
+# @Last Modified time: 2018-04-11 19:43:47
 import csv
 import amqpstorm
 import configparser
@@ -54,6 +54,7 @@ def get_results(url, queue, delete):
         if delete:
             msg.ack()
     connection.close()
+    LOG.debug('Got %d elements', len(received))
     return received
 
 
@@ -64,8 +65,9 @@ def persist_results(results, filename):
         results (list of dict): The results to persist
         filename (str): The path for the newly created csv file
     """
+    header = results[0].keys()
+    LOG.debug('Header: %s', header)
     with open(filename, 'w') as output:
-        header = results[0].keys()
         writer = csv.DictWriter(output, fieldnames=header)
         writer.writeheader()
         writer.writerows(results)

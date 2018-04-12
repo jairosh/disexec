@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 13:52:34
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 18:52:51
+# @Last Modified time: 2018-04-11 19:56:44
 
 import amqpstorm
 import argparse
@@ -87,7 +87,7 @@ class ParamsInExternalFileCreator(TaskCreator):
 
         return json_tasks
 
-    def read_csv_parameters(csvfile):
+    def read_csv_parameters(self, csvfile):
         """Parses a csv file into two lists, one with the parameter names and
         another with all the values that takes per run
 

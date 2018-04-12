@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 17:49:54
+# @Last Modified time: 2018-04-11 19:48:15
 import json
 import os
 import tempfile
@@ -128,9 +128,9 @@ class Task(object):
                 dirname = pattern.match(config).groups()[0]
                 break
         task_data = {'task_id': self._data['id'],
-                     'assigned': self._assigned.isoformat(),
-                     'started': self._started.isoformat(),
-                     'finished': self._finished.isoformat(),
+                     'execution_assigned': self._assigned.isoformat(),
+                     'execution_started': self._started.isoformat(),
+                     'execution_finished': self._finished.isoformat(),
                      'worker': platform.node()}
         for file in files:
             path = os.path.join(dirname, file)
