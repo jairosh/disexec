@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-30 11:06:30
+# @Last Modified time: 2018-03-31 16:28:49
 
 import amqpstorm
 import task
@@ -26,45 +26,54 @@ logging.getLogger('amqpstorm').setLevel(logging.INFO)
 def worker_thread(url, queue_name, results_queue):
     """Worker thread, for each instance
     """
-    connection = amqpstorm.UriConnection(url)
-    channel = connection.channel(rpc_timeout=120)
-    channel.queue.declare(queue_name, durable=True)
-    channel.basic.qos(1)  # Fetch one message at a time
-    thread_name = threading.current_thread().name
-    LOG.info('[%s] Waiting for tasks', thread_name)
-    while True:
-        message = channel.basic.get(queue=queue_name, no_ack=False)
-        # If the queue is empty, task_data will contain only None
-        if message is None:
-            LOG.info('[%s] Nothing else to do.', thread_name)
-            connection.close()
-            break
+    empty_queue = False
+    while not empty_queue:
+        connection = amqpstorm.UriConnection(url)
+        channel = connection.channel(rpc_timeout=120)
+        channel.queue.declare(queue_name, durable=True)
+        channel.basic.qos(1)  # Fetch one message at a time
+        thread_name = threading.current_thread().name
+        LOG.info('[%s] Waiting for tasks', thread_name)
+        while True:
+            message = channel.basic.get(queue=queue_name, no_ack=False)
+            # If the queue is empty, task_data will contain only None
+            if message is None:
+                LOG.info('[%s] Nothing else to do.', thread_name)
+                connection.close()
+                empty_queue = True
+                break
 
-        work = task.Task(message.body)
-        LOG.info('[%s] Got a task %s', thread_name, work.get_id())
-        rc = work.run()
-        if rc != 0:
-            LOG.warning('[%s] Unexpected exit code: %d', thread_name, rc)
-            message.nack()
-            continue
+            work = task.Task(message.body)
+            LOG.info('[%s] Got a task %s', thread_name, work.get_id())
+            rc = work.run()
+            if rc != 0:
+                LOG.warning('[%s] Unexpected exit code: %d', thread_name, rc)
+                message.nack()
+                continue
 
-        LOG.debug('[%s] Task execution finished', thread_name)
-        message.ack()
-        LOG.debug('[%s] ACK sent')
+            LOG.debug('[%s] Task execution finished', thread_name)
+            message.ack()
+            LOG.debug('[%s] ACK sent', thread_name)
 
-        with amqpstorm.UriConnection(url) as res_conn:
-            with res_conn.channel() as res_channel:
-                res_channel.queue.declare(results_queue, durable=True)
-                for result in work.result():
-                    props = {
-                        'delivery_mode': 2
-                    }
-                    res = amqpstorm.Message.create(res_channel, result, props)
-                    res.publish(results_queue, exchange='')
-        LOG.debug('[%s] Task and result processing completed')
-        res_conn.close()
+            with amqpstorm.UriConnection(url) as res_conn:
+                with res_conn.channel() as res_channel:
+                    res_channel.queue.declare(results_queue, durable=True)
+                    for result in work.result():
+                        props = {
+                            'delivery_mode': 2
+                        }
+                        res = amqpstorm.Message.create(res_channel,
+                                                       result,
+                                                       props)
+                        res.publish(results_queue, exchange='')
+            LOG.debug('[%s] Task and result processing completed', thread_name)
+            res_conn.close()
 
-    connection.close()
+        connection.close()
+
+    LOG.info('[%s] Thread exiting. (empty queue? %s)',
+             thread_name,
+             repr(empty_queue))
 
 
 def exit_with_error(msg, code):

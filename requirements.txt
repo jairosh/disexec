@@ -1,2 +1,4 @@
 disexec
 pika==0.11.2
+amqpstorm==2.4.0
+
