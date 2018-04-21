@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 19:48:15
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-04-21 14:18:17
 import json
 import os
 import tempfile
@@ -11,11 +11,6 @@ import parser
 import re
 import datetime
 import platform
-import logging
-
-
-logging.basicConfig(level=logging.DEBUG)
-LOG = logging.getLogger()
 
 
 class Task(object):

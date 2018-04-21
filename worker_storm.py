@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-03-31 16:28:49
+# @Last Modified time: 2018-04-21 14:22:04
 
 import amqpstorm
 import task
@@ -16,44 +16,51 @@ import logging
 
 DEFAULT_CONFIG_FILE = './disexec.config'
 DEFAULT_NBR_OF_THREADS = 4
+LOG_FILE = './worker.log'
+LOG_FORMAT = '%(asctime)s %(name)-12s %(threadName)s %(levelname)-8s %(message)s'
 
+log = logging.getLogger()
+logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, format=LOG_FORMAT)
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
-LOG = logging.getLogger()
+console = logging.StreamHandler()
+console.setLevel(logging.DEBUG)
+formatter = logging.Formatter(LOG_FORMAT)
+console.setFormatter(formatter)
+logging.getLogger('').addHandler(console)
+
 logging.getLogger('amqpstorm').setLevel(logging.INFO)
 
 
 def worker_thread(url, queue_name, results_queue):
     """Worker thread, for each instance
     """
+    global log
     empty_queue = False
     while not empty_queue:
         connection = amqpstorm.UriConnection(url)
         channel = connection.channel(rpc_timeout=120)
         channel.queue.declare(queue_name, durable=True)
         channel.basic.qos(1)  # Fetch one message at a time
-        thread_name = threading.current_thread().name
-        LOG.info('[%s] Waiting for tasks', thread_name)
+        log.info('Waiting for tasks')
         while True:
             message = channel.basic.get(queue=queue_name, no_ack=False)
             # If the queue is empty, task_data will contain only None
             if message is None:
-                LOG.info('[%s] Nothing else to do.', thread_name)
+                log.info('Nothing else to do.')
                 connection.close()
                 empty_queue = True
                 break
 
             work = task.Task(message.body)
-            LOG.info('[%s] Got a task %s', thread_name, work.get_id())
+            log.info('Got a task %s', work.get_id())
             rc = work.run()
             if rc != 0:
-                LOG.warning('[%s] Unexpected exit code: %d', thread_name, rc)
+                log.warning('Unexpected exit code: %d', rc)
                 message.nack()
                 continue
 
-            LOG.debug('[%s] Task execution finished', thread_name)
+            log.debug('Task execution finished')
             message.ack()
-            LOG.debug('[%s] ACK sent', thread_name)
 
             with amqpstorm.UriConnection(url) as res_conn:
                 with res_conn.channel() as res_channel:
@@ -66,13 +73,12 @@ def worker_thread(url, queue_name, results_queue):
                                                        result,
                                                        props)
                         res.publish(results_queue, exchange='')
-            LOG.debug('[%s] Task and result processing completed', thread_name)
+            log.debug('Task and result processing completed')
             res_conn.close()
 
         connection.close()
 
-    LOG.info('[%s] Thread exiting. (empty queue? %s)',
-             thread_name,
+    log.info('Thread exiting. (empty queue? %s)',
              repr(empty_queue))
 
 
@@ -82,6 +88,7 @@ def exit_with_error(msg, code):
 
 
 def main():
+    global log
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', help='Configuration file', type=str)
     args = parser.parse_args()
@@ -98,6 +105,7 @@ def main():
     except Exception as e:
         exit_with_error(e)
 
+    log.debug('Reading configuration file at %s', config_file)
     threads = []
     workers = cfg.get('worker', 'cores')
     args = (cfg.get('worker', 'queue_url'), cfg.get('general', 'queue_name'),
