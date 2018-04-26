@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sánchez
 # @Date:   2018-03-20 13:50:24
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-03-22 12:22:13
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-04-26 16:07:53
 import amqpstorm
 import configparser
 import argparse
@@ -84,6 +84,61 @@ def format_as_dict(experiments):
         experiment = dict(zip(header, exp))
         data.append(experiment)
     return data
+
+
+def evaluate_filenames(experiments):
+    """Checks for the filename template and path and populates it with the
+    available data. The format and template used here is the same as the ONE
+
+    Args:
+        experiments (list): List of dicts containing a row of the original CSV
+    """
+    paths = []
+    suffix = '_MessageStatsReport.txt'
+    for experiment in experiments:
+        if experiment['Scenario.name'] is None:
+            exit_with_error('Template error. Scenario.name not in the file', 4)
+        scenarios = format_template(experiment['Scenario.name'], experiment)
+
+        if experiment['Report.reportDir'] is None:
+            exit_with_error('Report.reportDir is undefined', 7)
+        parent_dir = experiment['Report.reportDir']
+        for scen in scenarios:
+            paths.append(os.path.join(parent_dir, scen + suffix))
+
+    return paths
+
+
+def format_template(template, values, formatter='%%'):
+    """Replaces parameters surrounded by %% with their respective value
+
+    Args:
+        template (str): A formatting string
+        values (dict): The collection of values to populate in the template
+
+    Returns:
+        list: List of formatted strings
+    """
+    pattern = re.compile('.*{0}(\w+\.\w+){0}.*'.format(formatter))
+    formatted = []
+    while pattern.match(template):
+        match = pattern.match(template)
+        name = match.groups()[0]
+        value = values[name]
+        if value.startswith("[") and value.endswith("]"):
+            value = value.replace("[", "").replace("]", "")
+            all_values = value.split(";")
+            for val in all_values:
+                sub_str = template.replace('{0}{1}{0}'.format(formatter, name),
+                                           val.strip())
+                formatted += format_template(sub_str, values, formatter)
+            return formatted
+        else:
+            template = template.replace('{0}{1}{0}'.format(formatter, name),
+                                        values[name])
+
+    formatted.append(template)
+    return formatted
 
 
 def get_scenario_name(experiment, ignorelist):
@@ -180,6 +235,8 @@ def main():
     parser.add_argument('-i', '--ignore', nargs='+',
                         help='If results are >1, this indicates the parameter\
                               string to skip in the scenario name e.g. seed')
+    parser.add_argument('-l', '--local', action='store_true', default=False,
+                        help='Resolves filenames and checks if exist')
 
     args = parser.parse_args()
     config_file = DEFAULT_CONFIG_FILE
@@ -195,6 +252,13 @@ def main():
         exit_with_error(e)
 
     experiments = load_experiments(cfg.get('coordinator', 'csvfile'))
+
+    if args.local:
+        paths = evaluate_filenames(experiments)
+        for file in paths:
+            print('{0}, "{1}"'.format(os.path.exists(file), file))
+        exit(0)
+
     res = load_results(cfg.get('worker', 'queue_url'),
                        cfg.get('general', 'results_queue_name'))
 
