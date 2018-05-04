@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-04-21 14:22:04
+# @Last Modified time: 2018-04-21 14:33:52
 
 import amqpstorm
 import task
@@ -56,6 +56,12 @@ def worker_thread(url, queue_name, results_queue):
             rc = work.run()
             if rc != 0:
                 log.warning('Unexpected exit code: %d', rc)
+                stdout = work.get_stdout()
+                stderr = work.get_stderr()
+                if stdout is not None:
+                    log.error('STDOUT: %s', stdout)
+                if stderr is not None:
+                    log.error('STDERR: %s', stderr)
                 message.nack()
                 continue
 

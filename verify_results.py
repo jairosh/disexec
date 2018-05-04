@@ -2,7 +2,7 @@
 # @Author: Jairo Sánchez
 # @Date:   2018-03-20 13:50:24
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-04-26 16:07:53
+# @Last Modified time: 2018-05-03 23:47:02
 import amqpstorm
 import configparser
 import argparse
@@ -94,7 +94,7 @@ def evaluate_filenames(experiments):
         experiments (list): List of dicts containing a row of the original CSV
     """
     paths = []
-    suffix = '_MessageStatsReport.txt'
+    suffix = '_MetricsReport.txt'
     for experiment in experiments:
         if experiment['Scenario.name'] is None:
             exit_with_error('Template error. Scenario.name not in the file', 4)

@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-04-21 14:18:17
+# @Last Modified time: 2018-05-03 23:45:25
 import json
 import os
 import tempfile
@@ -29,6 +29,7 @@ class Task(object):
         self._tempfolder = None
         self._arguments = ''
         self._stdout = None
+        self._stderr = None
         self._assigned = datetime.datetime.utcnow()
         self._started = None
         self._finished = None
@@ -91,10 +92,26 @@ class Task(object):
         process = subprocess.Popen(cmd,
                                    cwd=os.path.dirname(self._data['command']),
                                    stdout=subprocess.PIPE)
-        self._stdout, err = process.communicate()
+        self._stdout, self._stderr = process.communicate()
         result = process.returncode
         self.clean()
         return result
+
+    def get_stdout(self):
+        """Returns the output produced by the subprocess in STDOUT
+
+        Returns:
+            str: The complete output
+        """
+        return self._stdout
+
+    def get_stderr(self):
+        """Returns the output produced by the subprocess in STDERR
+
+        Returns:
+            str: The contents of STDERR in the subprocess
+        """
+        return self._stderr
 
     def result(self):
         """This function opens the result file and reads its contents formatted
@@ -114,7 +131,7 @@ class Task(object):
         for line in output.split('\n'):
             if pattern.match(line):
                 filename = pattern.match(line).groups()[0]
-                filename += '_MessageStatsReport.txt'
+                filename += '_MetricsReport.txt'
                 files.append(filename)
         pattern = re.compile('^[ ]*Report.reportDir[ ]*=[ ]*(.*)$')
         dirname = ''
