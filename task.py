@@ -2,7 +2,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-01 16:06:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-05-03 23:45:25
+# @Last Modified time: 2018-05-08 16:02:03
 import json
 import os
 import tempfile
@@ -94,6 +94,7 @@ class Task(object):
                                    stdout=subprocess.PIPE)
         self._stdout, self._stderr = process.communicate()
         result = process.returncode
+        self._finished = datetime.datetime.utcnow()
         self.clean()
         return result
 
@@ -121,8 +122,7 @@ class Task(object):
             list: List of JSON formatted strings. As the command could have had
             multiple executions and/or multiple output files, the list groups
             all the results.
-        """
-        self._finished = datetime.datetime.utcnow()
+        """        
         output = self._stdout.decode('utf-8')
         pattern = re.compile('^Running simulation \'(.*)\'$')
         files = []

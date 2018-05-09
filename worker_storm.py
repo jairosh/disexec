@@ -3,7 +3,7 @@
 # @Author: Jairo Sanchez
 # @Date:   2018-03-05 13:49:35
 # @Last Modified by:   Jairo Sánchez
-# @Last Modified time: 2018-04-21 14:33:52
+# @Last Modified time: 2018-05-08 23:55:33
 
 import amqpstorm
 import task
@@ -18,6 +18,8 @@ DEFAULT_CONFIG_FILE = './disexec.config'
 DEFAULT_NBR_OF_THREADS = 4
 LOG_FILE = './worker.log'
 LOG_FORMAT = '%(asctime)s %(name)-12s %(threadName)s %(levelname)-8s %(message)s'
+IDS_DONE = []
+JOBS_DONE = {}
 
 log = logging.getLogger()
 logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG, format=LOG_FORMAT)
@@ -53,20 +55,37 @@ def worker_thread(url, queue_name, results_queue):
 
             work = task.Task(message.body)
             log.info('Got a task %s', work.get_id())
-            rc = work.run()
-            if rc != 0:
-                log.warning('Unexpected exit code: %d', rc)
-                stdout = work.get_stdout()
-                stderr = work.get_stderr()
-                if stdout is not None:
-                    log.error('STDOUT: %s', stdout)
-                if stderr is not None:
-                    log.error('STDERR: %s', stderr)
-                message.nack()
-                continue
 
-            log.debug('Task execution finished')
-            message.ack()
+            ret_code = 0
+            if work.get_id() in IDS_DONE:
+                log.warning('Task ID already done. Skipping')
+                work = JOBS_DONE[work.get_id()]
+            else:
+                ret_code = work.run()
+                JOBS_DONE[work.get_id()] = work
+
+            try:
+                if ret_code != 0:
+                    log.warning('Unexpected exit code: %d', ret_code)
+                    stdout = work.get_stdout()
+                    stderr = work.get_stderr()
+                    if stdout is not None:
+                        log.error('STDOUT: %s', stdout)
+                    if stderr is not None:
+                        log.error('STDERR: %s', stderr)
+                    message.nack()
+                    continue
+
+                log.debug('Task execution finished')
+
+                message.ack()
+            except amqpstorm.AMQPConnectionError as conn_error:
+                log.error('Connection to server died before publish')
+                IDS_DONE.append(work.get_id())
+                break
+            except Exception as ex:
+                log.exception(ex)
+                break
 
             with amqpstorm.UriConnection(url) as res_conn:
                 with res_conn.channel() as res_channel:
@@ -80,7 +99,6 @@ def worker_thread(url, queue_name, results_queue):
                                                        props)
                         res.publish(results_queue, exchange='')
             log.debug('Task and result processing completed')
-            res_conn.close()
 
         connection.close()
 
