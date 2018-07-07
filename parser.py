@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 # @Author: Jairo Sanchez
 # @Date:   2018-03-08 14:09:18
-# @Last Modified by:   Jairo Sanchez
-# @Last Modified time: 2018-04-11 18:05:12
+# @Last Modified by:   Jairo Sánchez
+# @Last Modified time: 2018-07-07 12:44:46
 import re
 import os
 
@@ -62,7 +62,25 @@ class MessageStatsReportParser(Parser):
         else:
             raise FileNotFoundError('The provided path doesn\'t exists:{0}'
                                     .format(self._file))
-        return self._dict
+        return self._dict.update(self._parse_filename())
+
+    def _parse_filename(self):
+        fn = os.path.basename(self._file)
+        filename_regex = re.compile('(.*)_(.*)Router_(\d+)n_\[(\d+)\]ttl_' +
+                                    '\[(\d+)\]s_seed\[(.*)\]_\[(\d+)M\]_' +
+                                    '\[(.*)\]_w\[(\d+)\]_MetricsReport.txt')
+        print('Matching ' + fn)
+        match = re.match(filename_regex, fn)
+        print(match)
+        if match:
+            return {'mobility': match.groups()[0],
+                    'router': match.groups()[1],
+                    'nodes': match.groups()[2],
+                    'ttl': match.groups()[3],
+                    'seed': match.groups()[5],
+                    'buffer_size': match.groups()[6],
+                    'message_interval': match.groups()[7],
+                    'exp_weight': match.groups()[8]}
 
     def _parse_value(self, value_string):
         """Tries to parse :value_string: guessing the data type
